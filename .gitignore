@@ -1,0 +1,42 @@
+# ============== 关键：千万不要提交 ==============
+# 真实 API Key 在这里，一旦泄露 DeepSeek 账户可能被白嫖
+.env
+.env.local
+.env.*.local
+
+# ============== Python ==============
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+ENV/
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+dist/
+build/
+
+# ============== 编辑器 / 操作系统 ==============
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ============== 日志与临时文件 ==============
+*.log
+logs/
+tmp/
+temp/
+.cache/

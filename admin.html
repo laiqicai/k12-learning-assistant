@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>课堂监控 · 新学习助手</title>
+  <style>
+    :root {
+      --bg: #f5f6f8;
+      --card: #ffffff;
+      --border: #e3e7ee;
+      --text: #1a2233;
+      --muted: #6f7b93;
+      --accent: #3478ff;
+      --ok-bg: #e8f7ee;     --ok-fg: #0a7a3b;
+      --warn-bg: #fff8dc;   --warn-fg: #946600;
+      --err-bg: #ffe5e5;    --err-fg: #b42318;
+      --info-bg: #e6f1ff;   --info-fg: #1f4ec3;
+      --sys-bg: #eef0f4;    --sys-fg: #4a5568;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; background: var(--bg); color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", Arial, sans-serif;
+      font-size: 16px; line-height: 1.5;
+    }
+    .wrap { max-width: 1280px; margin: 0 auto; padding: 20px; }
+    header {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 16px; padding: 8px 0 18px;
+    }
+    header h1 { margin: 0; font-size: 22px; letter-spacing: .5px; }
+    header .meta { color: var(--muted); font-size: 14px; display: flex; gap: 14px; align-items: center; }
+    header button {
+      border: 1px solid var(--border); background: white; color: var(--text);
+      border-radius: 8px; padding: 6px 12px; cursor: pointer; font-size: 14px;
+    }
+    header button:hover { border-color: var(--accent); color: var(--accent); }
+    .conn-bad { color: var(--err-fg); font-weight: 700; }
+
+    .stats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 18px; }
+    .stat {
+      background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+      padding: 14px 16px;
+    }
+    .stat .label { color: var(--muted); font-size: 13px; }
+    .stat .value { font-size: 30px; font-weight: 800; margin-top: 4px; letter-spacing: -.5px; }
+    .stat .unit { font-size: 14px; color: var(--muted); margin-left: 4px; font-weight: 500; }
+
+    section.card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 12px; padding: 16px 18px; margin-bottom: 18px;
+    }
+    section.card h2 {
+      margin: 0 0 12px; font-size: 16px;
+      display: flex; justify-content: space-between; align-items: baseline;
+    }
+    section.card h2 .hint { color: var(--muted); font-size: 13px; font-weight: 400; }
+
+    .trending-list { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 8px 24px; }
+    .trending-list li {
+      display: flex; gap: 12px; align-items: center; padding: 6px 0;
+      border-bottom: 1px dashed var(--border);
+    }
+    .trending-list li:last-child, .trending-list li:nth-last-child(2):nth-child(odd) { border-bottom: 0; }
+    .trending-count {
+      flex: 0 0 auto; min-width: 42px; text-align: center;
+      background: var(--info-bg); color: var(--info-fg);
+      font-weight: 800; padding: 2px 8px; border-radius: 999px; font-size: 14px;
+    }
+    .trending-text { font-size: 15px; word-break: break-word; }
+    .empty { color: var(--muted); padding: 6px 0; font-size: 14px; }
+
+    table.feed {
+      width: 100%; border-collapse: collapse; font-size: 14px;
+    }
+    table.feed th {
+      text-align: left; padding: 6px 8px; color: var(--muted);
+      font-weight: 500; border-bottom: 1px solid var(--border); font-size: 13px;
+    }
+    table.feed td {
+      padding: 8px; border-bottom: 1px solid #f0f2f6; vertical-align: top;
+    }
+    tr.fresh td { background: linear-gradient(90deg, rgba(52,120,255,.06), transparent 30%); }
+    tr.fresh td:first-child { border-left: 3px solid var(--accent); padding-left: 5px; }
+
+    .col-time { width: 80px; color: var(--muted); font-variant-numeric: tabular-nums; }
+    .col-student { width: 70px; font-weight: 700; }
+    .col-status { width: 130px; }
+    .col-q { word-break: break-word; }
+    .col-ms { width: 70px; color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; }
+
+    .badge {
+      display: inline-block; padding: 2px 8px; border-radius: 999px;
+      font-size: 12px; font-weight: 700; white-space: nowrap;
+    }
+    .badge-ok      { background: var(--ok-bg);   color: var(--ok-fg); }
+    .badge-blocked { background: var(--err-bg);  color: var(--err-fg); }
+    .badge-error   { background: var(--err-bg);  color: var(--err-fg); }
+    .badge-cached  { background: var(--warn-bg); color: var(--warn-fg); }
+    .badge-preset  { background: var(--warn-bg); color: var(--warn-fg); }
+    .badge-local   { background: var(--info-bg); color: var(--info-fg); }
+    .badge-sys     { color: var(--sys-fg); background: var(--sys-bg); }
+
+    .badge-trunc {
+      background: #fff1e0; color: #a8580a; margin-left: 6px;
+      padding: 1px 6px; border-radius: 999px; font-size: 11px;
+    }
+
+    @media (max-width: 1000px) {
+      .stats { grid-template-columns: repeat(2, 1fr); }
+      .trending-list { grid-template-columns: 1fr; }
+      .col-time { width: 70px; }
+      .col-student { width: 56px; }
+    }
+  </style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1>课堂监控 · 新学习助手</h1>
+    <div class="meta">
+      <span id="connState"></span>
+      <span id="updateAt">—</span>
+      <button id="clearBtn" title="清空当前累计的事件,通常在下一节课开始前点">清空日志</button>
+      <button id="refreshBtn">手动刷新</button>
+    </div>
+  </header>
+
+  <div class="stats" id="stats">
+    <div class="stat"><div class="label">在线学生（60 秒内）</div><div class="value"><span id="statOnline">0</span></div></div>
+    <div class="stat"><div class="label">累计事件</div><div class="value"><span id="statTotal">0</span></div></div>
+    <div class="stat"><div class="label">模型成功率</div><div class="value"><span id="statSuccess">0</span><span class="unit">%</span></div></div>
+    <div class="stat"><div class="label">已拦截</div><div class="value"><span id="statBlocked">0</span></div></div>
+    <div class="stat"><div class="label">平均响应</div><div class="value"><span id="statAvg">0</span><span class="unit">ms</span></div></div>
+  </div>
+
+  <section class="card">
+    <h2>趋势问题 <span class="hint">最近 <span id="trendWindow">5</span> 分钟，相同问题 ≥ 2 次</span></h2>
+    <ul class="trending-list" id="trendingList">
+      <li class="empty">还没有重复出现的问题。</li>
+    </ul>
+  </section>
+
+  <section class="card">
+    <h2>实时事件 <span class="hint">最近 <span id="feedCap">200</span> 条，新事件在前</span></h2>
+    <table class="feed">
+      <colgroup>
+        <col class="col-time"/><col class="col-student"/><col class="col-status"/><col class="col-q"/><col class="col-ms"/>
+      </colgroup>
+      <thead>
+        <tr><th>时间</th><th>学生</th><th>状态</th><th>问题</th><th>耗时</th></tr>
+      </thead>
+      <tbody id="feedBody">
+        <tr><td colspan="5" class="empty">暂无事件。</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+</div>
+
+<script>
+  const STATUS_LABELS = {
+    ok:            { text: '成功',     cls: 'badge-ok' },
+    blocked:       { text: '已拦截',   cls: 'badge-blocked' },
+    local:         { text: '本地回复', cls: 'badge-local' },
+    preset:        { text: '预设回答', cls: 'badge-preset' },
+    cached:        { text: '缓存命中', cls: 'badge-cached' },
+    rate_limited:  { text: '提问过快', cls: 'badge-sys' },
+    pace_limited:  { text: '节奏提醒', cls: 'badge-sys' },
+    queue_timeout: { text: '排队超时', cls: 'badge-sys' },
+    timeout:       { text: '回答超时', cls: 'badge-error' },
+    error:         { text: '出错',     cls: 'badge-error' },
+  };
+
+  const BLOCK_REASON_SUFFIX = {
+    injection: '：试探',
+    self_harm: '：关怀',
+    cheating:  '：作弊',
+    unrelated: '：无关',
+  };
+
+  const FRESH_MS = 30000; // 最近 30 秒高亮
+
+  const $ = id => document.getElementById(id);
+  const updateAt = $('updateAt');
+  const connState = $('connState');
+  let serverTimeOffset = 0; // 服务端时间 - 客户端时间（用于"距今"显示）
+
+  function escapeHtml(s) {
+    return String(s ?? '')
+      .replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;').replaceAll("'", '&#039;');
+  }
+
+  function fmtTime(tsSeconds) {
+    const d = new Date(tsSeconds * 1000);
+    const pad = n => String(n).padStart(2, '0');
+    return pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
+  }
+
+  function fmtAgo(deltaSeconds) {
+    if (deltaSeconds < 2) return '刚刚';
+    if (deltaSeconds < 60) return Math.floor(deltaSeconds) + ' 秒前';
+    if (deltaSeconds < 3600) return Math.floor(deltaSeconds / 60) + ' 分钟前';
+    return Math.floor(deltaSeconds / 3600) + ' 小时前';
+  }
+
+  function render(data) {
+    const stats = data.stats || {};
+
+    $('statOnline').textContent  = stats.online_students ?? 0;
+    $('statTotal').textContent   = stats.total_events ?? 0;
+    $('statSuccess').textContent = stats.success_pct ?? 0;
+    $('statBlocked').textContent = stats.blocked_count ?? 0;
+    $('statAvg').textContent     = stats.avg_latency_ms ?? 0;
+
+    $('trendWindow').textContent = Math.round((stats.trend_window_seconds || 300) / 60);
+
+    // 趋势区
+    const trendingList = $('trendingList');
+    const trending = stats.trending || [];
+    if (trending.length === 0) {
+      trendingList.innerHTML = '<li class="empty">还没有重复出现的问题。</li>';
+    } else {
+      trendingList.innerHTML = trending.map(t => (
+        '<li>' +
+          '<span class="trending-count">×' + t.count + '</span>' +
+          '<span class="trending-text">' + escapeHtml(t.sample) + '</span>' +
+        '</li>'
+      )).join('');
+    }
+
+    // 实时事件
+    const events = data.events || [];
+    const feedBody = $('feedBody');
+    const serverNow = data.server_time || (Date.now() / 1000);
+
+    if (events.length === 0) {
+      feedBody.innerHTML = '<tr><td colspan="5" class="empty">暂无事件。</td></tr>';
+    } else {
+      feedBody.innerHTML = events.map(e => {
+        const meta = STATUS_LABELS[e.status] || { text: e.status, cls: 'badge-sys' };
+        let statusText = meta.text;
+        if (e.status === 'blocked' && e.block_reason && BLOCK_REASON_SUFFIX[e.block_reason]) {
+          statusText += BLOCK_REASON_SUFFIX[e.block_reason];
+        }
+        const isFresh = (serverNow - e.ts) <= (FRESH_MS / 1000);
+        const truncMark = e.truncated ? '<span class="badge-trunc">截断</span>' : '';
+        const studentTxt = e.student_no > 0 ? ('学生 ' + e.student_no) : '匿名';
+        return (
+          '<tr class="' + (isFresh ? 'fresh' : '') + '">' +
+            '<td class="col-time">' + fmtTime(e.ts) + '</td>' +
+            '<td class="col-student">' + studentTxt + '</td>' +
+            '<td class="col-status"><span class="badge ' + meta.cls + '">' + escapeHtml(statusText) + '</span></td>' +
+            '<td class="col-q">' + escapeHtml(e.question || '') + truncMark + '</td>' +
+            '<td class="col-ms">' + (e.elapsed_ms || 0) + ' ms</td>' +
+          '</tr>'
+        );
+      }).join('');
+    }
+
+    serverTimeOffset = serverNow - (Date.now() / 1000);
+    refreshUpdateLabel();
+    setConnState(true);
+  }
+
+  function refreshUpdateLabel() {
+    if (lastFetchAt === 0) {
+      updateAt.textContent = '—';
+    } else {
+      const ago = (Date.now() - lastFetchAt) / 1000;
+      updateAt.textContent = '更新于 ' + fmtAgo(ago);
+    }
+  }
+
+  function setConnState(ok) {
+    if (ok) {
+      connState.textContent = '';
+      connState.className = '';
+    } else {
+      connState.textContent = '⚠ 连接异常';
+      connState.className = 'conn-bad';
+    }
+  }
+
+  let lastFetchAt = 0;
+  let pollTimer = null;
+  let inflight = false;
+
+  async function poll() {
+    if (inflight) return;
+    inflight = true;
+    try {
+      const res = await fetch('/admin/events', { credentials: 'same-origin' });
+      if (res.status === 401) {
+        setConnState(false);
+        connState.textContent = '⚠ 凭据已失效，请重新通过 /admin?token=xxx 登录';
+        return;
+      }
+      if (!res.ok) {
+        setConnState(false);
+        return;
+      }
+      const data = await res.json();
+      lastFetchAt = Date.now();
+      render(data);
+    } catch (e) {
+      setConnState(false);
+    } finally {
+      inflight = false;
+    }
+  }
+
+  function startPolling() {
+    if (pollTimer) clearInterval(pollTimer);
+    pollTimer = setInterval(poll, 2500);
+  }
+
+  $('refreshBtn').addEventListener('click', poll);
+  $('clearBtn').addEventListener('click', async () => {
+    if (!confirm('确定要清空当前累计的事件吗？\n通常在下一节课开始前再清空。')) return;
+    try {
+      const res = await fetch('/admin/clear', { method: 'POST', credentials: 'same-origin' });
+      if (!res.ok) {
+        alert('清空失败，状态码：' + res.status);
+        return;
+      }
+      poll();
+    } catch (e) {
+      alert('清空失败：' + e.message);
+    }
+  });
+  // 时间标签每秒刷新一次，让"X 秒前"准确
+  setInterval(refreshUpdateLabel, 1000);
+
+  poll();
+  startPolling();
+</script>
+</body>
+</html>
