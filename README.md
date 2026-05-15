@@ -70,9 +70,9 @@
 
 ## 截图
 
-![学生界面](docs/screenshots/student.png)
+![学生界面](docs/screenshots/ student.png)
 
-![教师面板](docs/screenshots/admin.png)
+![教师面板](docs/screenshots/ admin.png)
 
 ---
 
